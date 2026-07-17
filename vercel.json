@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-prompt",
+      "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/flash-hunt",
+      "schedule": "30 14 * * *"
+    }
+  ]
+}
