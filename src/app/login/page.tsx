@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useStyles } from "@/lib/styles";
+import { Browser } from "@capacitor/browser";
+import { isNativeApp } from "@/lib/native";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -11,17 +13,40 @@ export default function LoginPage() {
 
   useEffect(() => {
     const reset = () => setLoading(null);
+    const resetWhenVisible = () => {
+      if (document.visibilityState === "visible") reset();
+    };
     window.addEventListener("focus", reset);
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reset(); });
-    return () => window.removeEventListener("focus", reset);
+    document.addEventListener("visibilitychange", resetWhenVisible);
+    return () => {
+      window.removeEventListener("focus", reset);
+      document.removeEventListener("visibilitychange", resetWhenVisible);
+    };
   }, []);
 
   const signIn = async (provider: "google" | "apple") => {
     setLoading(provider); setError("");
-    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin + "/auth/callback" } });
+    const native = isNativeApp();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: native ? "memeus://auth/callback" : window.location.origin + "/auth/callback",
+        skipBrowserRedirect: native,
+      },
+    });
     if (error) {
       setError(error.message?.includes("not enabled") ? `${provider === "apple" ? "Apple" : "Google"} sign-in isn't set up yet.` : "Something went wrong.");
       setLoading(null);
+      return;
+    }
+    if (native && data.url) {
+      try {
+        await Browser.open({ url: data.url });
+      } catch (browserError) {
+        console.error("Could not open native sign-in:", browserError);
+        setError("Could not open sign-in. Please try again.");
+        setLoading(null);
+      }
     }
   };
 
@@ -40,7 +65,7 @@ export default function LoginPage() {
           {loading === "google" ? "Signing in..." : "Continue with Google"}
         </button>
         <button onClick={() => signIn("apple")} disabled={!!loading} className="font-display"
-          style={{ ...s.btn("#241B4D", "#fff"), borderColor: "#241B4D", boxShadow: "4px 4px 0 #000", opacity: loading && loading !== "apple" ? 0.5 : 1 } as any}
+          style={{ ...s.btn("#241B4D", "#fff"), boxShadow: "4px 4px 0 #000", opacity: loading && loading !== "apple" ? 0.5 : 1 } as any}
           onMouseDown={s.press} onMouseUp={s.release} onMouseLeave={s.release}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
           {loading === "apple" ? "Signing in..." : "Continue with Apple"}
@@ -52,7 +77,7 @@ export default function LoginPage() {
         </div>
       )}
       <p className="animate-pop-in" style={{ marginTop: 32, fontSize: 12, color: s.muted, textAlign: "center", lineHeight: 1.6, animationDelay: "200ms", opacity: 0.7 }}>
-        By continuing, you confirm you&#39;re 18+ and agree to our <a href="/terms" style={{ color: s.muted, textDecoration: "underline" }}>Terms</a> &amp; <a href="/privacy" style={{ color: s.muted, textDecoration: "underline" }}>Privacy</a>.
+        By continuing, you agree to our <a href="/terms" style={{ color: s.muted, textDecoration: "underline" }}>Terms</a> &amp; <a href="/privacy" style={{ color: s.muted, textDecoration: "underline" }}>Privacy</a>. You&#39;ll confirm your age next.
       </p>
     </div>
   );

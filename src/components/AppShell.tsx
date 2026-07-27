@@ -1,10 +1,6 @@
 "use client";
 
-import { useTheme } from "@/lib/theme";
-
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { colors } = useTheme();
-
   return (
     <div style={{
       minHeight: "100dvh",
@@ -23,6 +19,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         flexDirection: "column",
         position: "relative",
         transition: "background 0.3s ease",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}>
         {children}
       </div>

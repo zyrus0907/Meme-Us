@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { DailyPrompt, Couple } from "@/lib/types";
 import { toast } from "sonner";
+import {
+  isNativeApp,
+  isNativeCancellation,
+  nativeSuccessHaptic,
+  pickNativePhoto,
+} from "@/lib/native";
 
 type Stage = "pick" | "edit" | "uploading" | "done";
 
@@ -44,7 +50,46 @@ export default function CreatePage() {
     })();
   }, []);
 
-  const openPicker = (source: "camera" | "library") => {
+  const preparePhoto = async (imageSource: Blob | string) => {
+    const bitmap = typeof imageSource === "string"
+      ? await new Promise<HTMLImageElement>((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = imageSource;
+        })
+      : await createImageBitmap(imageSource);
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1080 / bitmap.width, 1080 / bitmap.height, 1);
+    canvas.width = bitmap.width * scale;
+    canvas.height = bitmap.height * scale;
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const sq = document.createElement("canvas");
+    const crop = Math.min(canvas.width, canvas.height);
+    sq.width = crop; sq.height = crop;
+    const ox = (canvas.width - crop) / 2;
+    const oy = (canvas.height - crop) / 2;
+    sq.getContext("2d")!.drawImage(canvas, ox, oy, crop, crop, 0, 0, crop, crop);
+
+    setPhotoDataUrl(sq.toDataURL("image/jpeg", 0.9));
+    setStage("edit");
+  };
+
+  const openPicker = async (source: "camera" | "library") => {
+    if (isNativeApp()) {
+      try {
+        const dataUrl = await pickNativePhoto(source);
+        if (dataUrl) await preparePhoto(dataUrl);
+      } catch (error) {
+        if (!isNativeCancellation(error)) {
+          console.error("Native photo picker failed:", error);
+          toast.error("Could not open photos. Check camera permission in Settings.");
+        }
+      }
+      return;
+    }
+
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -54,23 +99,7 @@ export default function CreatePage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      const scale = Math.min(1080 / bitmap.width, 1080 / bitmap.height, 1);
-      canvas.width = bitmap.width * scale;
-      canvas.height = bitmap.height * scale;
-      canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-      // Square crop
-      const sq = document.createElement("canvas");
-      const crop = Math.min(canvas.width, canvas.height);
-      sq.width = crop; sq.height = crop;
-      const ox = (canvas.width - crop) / 2;
-      const oy = (canvas.height - crop) / 2;
-      sq.getContext("2d")!.drawImage(canvas, ox, oy, crop, crop, 0, 0, crop, crop);
-
-      setPhotoDataUrl(sq.toDataURL("image/jpeg", 0.9));
-      setStage("edit");
+      await preparePhoto(file);
     };
     input.click();
   };
@@ -124,6 +153,7 @@ export default function CreatePage() {
       if (insErr) throw insErr;
 
       setStage("done");
+      await nativeSuccessHaptic().catch(() => undefined);
       toast.success("Meme submitted! 🎉");
 
       const partnerId = couple.user_a === user.id ? couple.user_b : couple.user_a;

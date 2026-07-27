@@ -14,6 +14,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
   html[data-theme="dark"],
   html[data-theme="dark"] body {
     background: #0E0A1A;
@@ -23,6 +27,12 @@
   button:focus-visible,
   a:focus-visible,
   input:focus-visible {
+    outline: 3px solid #F5B301;
+    outline-offset: 3px;
+  }
+
+  textarea:focus-visible,
+  select:focus-visible {
     outline: 3px solid #F5B301;
     outline-offset: 3px;
   }

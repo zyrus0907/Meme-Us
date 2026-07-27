@@ -184,7 +184,7 @@ export default function FlashHuntPage() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gap: 16 }}>
       <span style={{ fontSize: 64 }}>⚡</span>
       <h2 className="font-display" style={{ fontSize: 24, fontWeight: 700, color: "#241B4D", margin: 0 }}>No Flash Hunt right now</h2>
-      <p style={{ fontSize: 14, color: "#8A84A3", maxWidth: 280 }}>Flash Hunts drop randomly 2-3 times a week. You'll get a push notification when one starts!</p>
+      <p style={{ fontSize: 14, color: "#8A84A3", maxWidth: 280 }}>Flash Hunts drop randomly 2-3 times a week. You&apos;ll get a push notification when one starts!</p>
       <button onClick={() => router.back()} className="sticker font-display" style={{ padding: "14px 32px", fontSize: 15, fontWeight: 700, color: "#fff", background: "#6C5CE7", cursor: "pointer" }}>Back to home</button>
 
     </div>
@@ -224,7 +224,7 @@ export default function FlashHuntPage() {
               <p style={{ fontSize: 14, color: "#F5B301" }}>⏳ You submitted! Waiting for {partnerName}...</p>
             )}
             {expired && !isWon && (
-              <p style={{ fontSize: 14, color: "#FF5C8A" }}>⏰ Time's up! Nobody submitted in time.</p>
+              <p style={{ fontSize: 14, color: "#FF5C8A" }}>⏰ Time&apos;s up! Nobody submitted in time.</p>
             )}
           </div>
 

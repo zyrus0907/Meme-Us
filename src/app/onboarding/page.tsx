@@ -39,17 +39,28 @@ export default function OnboardingPage() {
   }, []);
 
   const confirmAge = async () => {
+    if (!userId) return;
     setLoading(true);
-    await supabase.from("profiles").update({ age_confirmed_at: new Date().toISOString() }).eq("id", userId!);
+    setError(null);
+    const { error } = await supabase.from("profiles").update({ age_confirmed_at: new Date().toISOString() }).eq("id", userId);
     setLoading(false);
+    if (error) {
+      setError("We couldn't save your confirmation. Check your connection and try again.");
+      return;
+    }
     setStep("name");
   };
 
   const saveName = async () => {
-    if (!displayName.trim()) return;
+    if (!displayName.trim() || !userId) return;
     setLoading(true);
-    await supabase.from("profiles").update({ display_name: displayName.trim() }).eq("id", userId!);
+    setError(null);
+    const { error } = await supabase.from("profiles").update({ display_name: displayName.trim() }).eq("id", userId);
     setLoading(false);
+    if (error) {
+      setError("We couldn't save your name. Check your connection and try again.");
+      return;
+    }
     setStep("choice");
   };
 
@@ -152,6 +163,7 @@ export default function OnboardingPage() {
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}>
             {loading ? "..." : "I'm 18 or older →"}
           </button>
+          {error && <p role="alert" style={{ fontSize: 13, color: "#FF5C8A", fontWeight: 700, maxWidth: 300 }}>{error}</p>}
           <p style={{ fontSize: 12, color: "#B7B0D9" }}>
             See our <a href="/terms" style={{ color: "#B7B0D9", textDecoration: "underline" }}>Terms</a> for details.
           </p>
@@ -166,7 +178,9 @@ export default function OnboardingPage() {
             <h2 className="font-display" style={S.title}>What should we call you?</h2>
             <p style={{ ...S.subtitle, marginTop: 8 }}>Your partner will see this name.</p>
           </div>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" maxLength={24} autoFocus className="animate-pop-in" style={{ ...S.input, animationDelay: "120ms" }} />
+          <label htmlFor="display-name" style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}>Display name</label>
+          <input id="display-name" value={displayName} onChange={(e) => { setDisplayName(e.target.value); setError(null); }} placeholder="Your name" maxLength={24} autoComplete="nickname" autoFocus className="animate-pop-in" style={{ ...S.input, animationDelay: "120ms" }} />
+          {error && <p role="alert" style={{ fontSize: 13, color: "#FF5C8A", fontWeight: 700, maxWidth: 300 }}>{error}</p>}
           <button onClick={saveName} disabled={!displayName.trim() || loading} className="font-display animate-pop-in" style={{ ...S.btn("#6C5CE7"), animationDelay: "180ms", opacity: !displayName.trim() ? 0.4 : 1 }}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}>
             {loading ? "..." : "Continue →"}
@@ -214,7 +228,7 @@ export default function OnboardingPage() {
           <div className="animate-pop-in" style={S.icon("#FFF4D6", 3)}>🔗</div>
           <div className="animate-pop-in" style={{ animationDelay: "60ms" }}>
             <h2 className="font-display" style={S.title}>Your couple code</h2>
-            <p style={{ ...S.subtitle, marginTop: 8 }}>Send this to your partner. Once they enter it, you're linked and today's prompt unlocks.</p>
+            <p style={{ ...S.subtitle, marginTop: 8 }}>Send this to your partner. Once they enter it, you&apos;re linked and today&apos;s prompt unlocks.</p>
           </div>
           <button onClick={copyCode} className="animate-pop-in" style={{ ...S.codeBox, animationDelay: "120ms" }}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}>
@@ -225,7 +239,7 @@ export default function OnboardingPage() {
           </button>
           <div style={{ background: "#FFF4D6", border: "2px solid #241B4D", borderRadius: 18, boxShadow: "3px 3px 0 #241B4D", padding: "14px 20px", maxWidth: 320, transform: "rotate(1deg)" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#241B4D", lineHeight: 1.5, margin: 0 }}>
-              💡 Text them: <em>"daily meme battle. you and me. code: {generatedCode}"</em>
+              💡 Text them: <em>&ldquo;daily meme battle. you and me. code: {generatedCode}&rdquo;</em>
             </p>
           </div>
           <button onClick={shareInvite} className="font-display" style={S.btn("#6C5CE7")}
@@ -234,7 +248,7 @@ export default function OnboardingPage() {
           </button>
           <button onClick={() => router.replace("/waiting-partner")} className="font-display" style={S.btn("#241B4D")}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}>
-            I've sent it →
+            I&apos;ve sent it →
           </button>
         </>
       )}
@@ -248,13 +262,17 @@ export default function OnboardingPage() {
             <p style={{ ...S.subtitle, marginTop: 8 }}>Your partner should have a 6-character code.</p>
           </div>
           <input
+            aria-label="6-character couple code"
+            autoCapitalize="characters"
+            autoComplete="off"
+            inputMode="text"
             value={inviteCode}
             onChange={(e) => { setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6)); setError(null); }}
             placeholder="ABC123" maxLength={6} autoFocus
             className="animate-pop-in"
             style={{ ...S.input, fontSize: 32, letterSpacing: "0.25em", animationDelay: "120ms" }}
           />
-          {error && <p style={{ fontSize: 13, color: "#FF5C8A", fontWeight: 700, maxWidth: 300 }}>{error}</p>}
+          {error && <p role="alert" style={{ fontSize: 13, color: "#FF5C8A", fontWeight: 700, maxWidth: 300 }}>{error}</p>}
           <button onClick={joinCouple} disabled={inviteCode.length !== 6 || loading} className="font-display animate-pop-in" style={{ ...S.btn("#6C5CE7"), animationDelay: "180ms", opacity: inviteCode.length !== 6 ? 0.4 : 1 }}
             onMouseDown={press} onMouseUp={release} onMouseLeave={release}>
             {loading ? "..." : "Join couple →"}

@@ -3,6 +3,27 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+async function listStorageFiles(admin: any, prefix: string, depth = 0): Promise<string[]> {
+  if (depth > 8) throw new Error("Storage folder nesting is too deep");
+  const { data: items, error } = await admin.storage.from("memes").list(prefix, { limit: 1000 });
+  if (error) throw error;
+
+  const paths: string[] = [];
+  for (const item of items || []) {
+    const path = `${prefix}/${item.name}`;
+    if (item.id == null) paths.push(...await listStorageFiles(admin, path, depth + 1));
+    else paths.push(path);
+  }
+  return paths;
+}
+
+async function removeStorageFiles(admin: any, paths: string[]) {
+  for (let index = 0; index < paths.length; index += 100) {
+    const { error } = await admin.storage.from("memes").remove(paths.slice(index, index + 100));
+    if (error) throw error;
+  }
+}
+
 // DELETE /api/account
 // 1. Identifies the user's couple and all their Storage files.
 // 2. Purges files from the `memes` bucket (service role — clients can't delete).
@@ -10,8 +31,11 @@ import { NextResponse } from "next/server";
 //
 // ⚠️ [HR-3] HUMAN REVIEW REQUIRED before launch — verify this covers all data.
 export async function DELETE() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: "Account deletion is not configured" }, { status: 503 });
+  }
   // 1. Get the authenticated user
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -43,45 +67,22 @@ export async function DELETE() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  if (couple) {
-    // List all files under the couple's folder
-    const { data: files } = await admin.storage
-      .from("memes")
-      .list(couple.id, { limit: 1000 });
+  try {
+    const couplePaths = couple ? await listStorageFiles(admin, couple.id) : [];
+    const { data: roomSubmissions, error: roomError } = await admin
+      .from("room_submissions")
+      .select("image_url")
+      .eq("user_id", user.id);
+    if (roomError) throw roomError;
 
-    if (files && files.length > 0) {
-      // Files might be nested in prompt subfolders
-      // List each subfolder's contents
-      const allPaths: string[] = [];
-
-      for (const item of files) {
-        if (item.id === null || item.metadata === null) {
-          // It's a folder — list its contents
-          const { data: subFiles } = await admin.storage
-            .from("memes")
-            .list(`${couple.id}/${item.name}`, { limit: 100 });
-
-          if (subFiles) {
-            for (const sf of subFiles) {
-              allPaths.push(`${couple.id}/${item.name}/${sf.name}`);
-            }
-          }
-        } else {
-          allPaths.push(`${couple.id}/${item.name}`);
-        }
-      }
-
-      if (allPaths.length > 0) {
-        await admin.storage.from("memes").remove(allPaths);
-      }
-    }
+    const roomPaths = (roomSubmissions || []).map((row: any) => row.image_url).filter(Boolean);
+    await removeStorageFiles(admin, [...new Set([...couplePaths, ...roomPaths])]);
+  } catch (storageError) {
+    console.error("Account storage purge failed:", storageError);
+    return NextResponse.json({ error: "Failed to remove account files" }, { status: 500 });
   }
 
-  // 4. Call the RPC to cascade-delete all DB rows + auth user
-  const { error } = await admin.rpc("delete_my_account");
-
-  // The RPC runs as SECURITY DEFINER but we're calling via service role.
-  // We need to call it with the user's context. Let's do it via the user's client instead.
+  // 4. Run the SECURITY DEFINER RPC with the user's authenticated context.
   const { error: rpcError } = await supabase.rpc("delete_my_account");
 
   if (rpcError) {

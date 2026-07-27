@@ -15,9 +15,12 @@ export async function POST(request: NextRequest) {
     if (!partner_id || !title || !message) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+    if (typeof title !== "string" || typeof message !== "string" || title.length > 80 || message.length > 240) {
+      return NextResponse.json({ error: "Invalid notification" }, { status: 400 });
+    }
 
     // Verify the caller is authenticated
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,6 +42,17 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    const { data: couple } = await admin
+      .from("couples")
+      .select("user_a, user_b, status")
+      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+      .eq("status", "linked")
+      .maybeSingle();
+    const actualPartnerId = couple?.user_a === user.id ? couple.user_b : couple?.user_a;
+    if (!couple || actualPartnerId !== partner_id) {
+      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    }
 
     const { data: subs } = await admin
       .from("push_subscriptions")
@@ -71,7 +85,7 @@ export async function POST(request: NextRequest) {
     const payload = JSON.stringify({
       title,
       body: message,
-      url: url || "/today",
+      url: typeof url === "string" && url.startsWith("/") && !url.startsWith("//") ? url : "/today",
       tag: "partner-submitted",
     });
 

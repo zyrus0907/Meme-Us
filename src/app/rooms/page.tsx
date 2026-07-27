@@ -151,7 +151,7 @@ export default function RoomsPage() {
             <p style={{ fontSize: 11, fontWeight: 700, color: "#241B4D", margin: 0, lineHeight: 1.7 }}>
               🏠 Rooms are for friends & groups (2-12 people)<br />
               👀 Photos are visible as soon as posted (no blind reveal)<br />
-              💀🔥🤡😂 React to each other's memes<br />
+              💀🔥🤡😂 React to each other&apos;s memes<br />
               📸 Everyone gets the same daily prompt
             </p>
           </div>

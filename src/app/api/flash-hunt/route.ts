@@ -13,13 +13,20 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleTrigger(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json({ error: "Cron is not configured" }, { status: 503 });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const url = new URL(request.url);
-  const specificCouple = url.searchParams.get("couple_id");
+  const specificCouple = new URL(request.url).searchParams.get("couple_id");
 
   // If not manually triggered, randomly skip (50% chance) to keep it unpredictable
   if (!specificCouple && Math.random() > 0.5) {

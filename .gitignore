@@ -23,3 +23,10 @@ npm-debug.log*
 next-env.d.ts
 
 .vercel
+.env*
+
+# Capacitor / Xcode generated user data
+ios/App/build/
+ios/App/DerivedData/
+ios/App/App.xcodeproj/xcuserdata/
+*.xcuserstate

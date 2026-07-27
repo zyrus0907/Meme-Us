@@ -61,10 +61,17 @@ export default function SettingsPage() {
     if (deleteConfirm !== "DELETE") return;
     setDeleteLoading(true);
     try {
-      await fetch("/api/account", { method: "DELETE" });
+      const response = await fetch("/api/account", { method: "DELETE" });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Account deletion failed");
+      }
       await supabase.auth.signOut();
       router.replace("/login");
-    } catch { toast.error("Failed."); setDeleteLoading(false); }
+    } catch {
+      toast.error("Your account was not deleted. Please try again.");
+      setDeleteLoading(false);
+    }
   };
 
   if (loading) return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="animate-bounce-load" style={{ fontSize: 40 }}>⚙️</span></div>;
@@ -164,7 +171,7 @@ export default function SettingsPage() {
             </div>
             <p style={{ fontSize: 14, color: s.muted, lineHeight: 1.6, marginBottom: 16 }}>This permanently removes everything. <strong style={{ color: s.ink }}>Cannot be undone.</strong></p>
             <p style={{ fontSize: 12, fontWeight: 700, color: s.ink, marginBottom: 6 }}>Type DELETE to confirm:</p>
-            <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="DELETE" style={{ ...s.input, textAlign: "center", letterSpacing: 6, textTransform: "uppercase", borderColor: s.colors.pink, marginBottom: 16 } as any} />
+            <input aria-label="Type DELETE to confirm account deletion" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value.toUpperCase())} placeholder="DELETE" autoCapitalize="characters" autoComplete="off" style={{ ...s.input, textAlign: "center", letterSpacing: 6, textTransform: "uppercase", borderColor: s.colors.pink, marginBottom: 16 } as any} />
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setShowDelete(false); setDeleteConfirm(""); }} className="font-display" style={{ ...s.btn(s.colors.bgCard, s.ink), flex: 1 } as any}>Cancel</button>
               <button onClick={deleteAccount} disabled={deleteConfirm !== "DELETE" || deleteLoading} className="font-display" style={{ ...s.btn(s.colors.pink), flex: 1, opacity: deleteConfirm !== "DELETE" ? 0.4 : 1 } as any}>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/lib/theme";
 import { AppShell } from "@/components/AppShell";
+import { NativeAppBridge } from "@/components/NativeAppBridge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <script
           dangerouslySetInnerHTML={{
@@ -40,6 +41,7 @@ export default function RootLayout({
         />
       </head>
       <body style={{ margin: 0 }}>
+        <NativeAppBridge />
         <ThemeProvider>
           <AppShell>{children}</AppShell>
         </ThemeProvider>

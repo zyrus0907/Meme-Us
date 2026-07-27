@@ -2,7 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/auth/callback", "/terms", "/privacy"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/auth/callback",
+  "/terms",
+  "/privacy",
+  "/manifest.json",
+];
+const CRON_ROUTES = ["/api/cron/daily-prompt", "/api/flash-hunt"];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -36,7 +43,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // If not logged in and trying to access a protected route → /login
-  if (!user && !PUBLIC_ROUTES.some((r) => pathname.startsWith(r))) {
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || CRON_ROUTES.includes(pathname);
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

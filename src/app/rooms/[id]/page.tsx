@@ -247,7 +247,7 @@ export default function RoomDetailPage() {
           {/* Feed — rolling reveals */}
           {submissions.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#8A84A3", textTransform: "uppercase", letterSpacing: 1 }}>Today's memes</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#8A84A3", textTransform: "uppercase", letterSpacing: 1 }}>Today&apos;s memes</p>
               {submissions.map((sub, i) => {
                 const subReactions = reactions.filter(r => r.submission_id === sub.id);
                 const myReaction = subReactions.find(r => r.from_user_id === userId)?.emoji;

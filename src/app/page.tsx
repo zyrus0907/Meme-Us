@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Browser } from "@capacitor/browser";
+import { isNativeApp } from "@/lib/native";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState<"google" | "apple" | null>(null);
@@ -11,11 +13,24 @@ export default function LoginPage() {
   const signIn = async (provider: "google" | "apple") => {
     setLoading(provider);
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
+    const native = isNativeApp();
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin + "/auth/callback" },
+      options: {
+        redirectTo: native ? "memeus://auth/callback" : window.location.origin + "/auth/callback",
+        skipBrowserRedirect: native,
+      },
     });
-    if (error) { setError("Something went wrong. Try again."); setLoading(null); }
+    if (error) { setError("Something went wrong. Try again."); setLoading(null); return; }
+    if (native && data.url) {
+      try {
+        await Browser.open({ url: data.url });
+      } catch (browserError) {
+        console.error("Could not open native sign-in:", browserError);
+        setError("Could not open sign-in. Please try again.");
+        setLoading(null);
+      }
+    }
   };
 
   return (
@@ -63,7 +78,7 @@ export default function LoginPage() {
           style={{
             width: "100%", padding: "16px 24px", fontSize: 16, fontWeight: 700,
             color: "#fff", background: "#241B4D", display: "flex", alignItems: "center",
-            justifyContent: "center", gap: 10, borderColor: "#241B4D",
+            justifyContent: "center", gap: 10,
             transition: "transform 0.15s", opacity: loading ? 0.6 : 1,
           }}
           onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.96)")}
